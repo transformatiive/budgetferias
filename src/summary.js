@@ -130,18 +130,21 @@ function buildSummary(expenses, today = todayISO(), overrides = []) {
     variable,
     prepaid,
     totals,
-    cumulative: cumulativeSeries(expenses, today, groupOf),
+    // duas series: o gasto total (o que saiu mesmo da conta) e so o variavel,
+    // para se ver o dia-a-dia sem os degraus dos pagamentos de alojamento
+    cumulative: cumulativeSeries(expenses, today, groupOf, false),
+    cumulativeTotal: cumulativeSeries(expenses, today, groupOf, true),
   };
 }
 
 /**
- * Gasto variavel acumulado por dia da viagem. Exclui o pre-pago para a linha
- * nao dar saltos verticais quando se paga uma reserva.
+ * Gasto acumulado por dia da viagem. Com includeAll a false conta so o gasto
+ * variavel; a true conta tudo, incluindo os pagamentos de alojamento.
  */
-function cumulativeSeries(expenses, today = todayISO(), groupOf = new Map()) {
+function cumulativeSeries(expenses, today = todayISO(), groupOf = new Map(), includeAll = false) {
   const byDay = new Array(TOTAL_DAYS + 1).fill(0);
   for (const e of expenses) {
-    if (groupOf.get(e.category) === 'prepaid') continue;
+    if (!includeAll && groupOf.get(e.category) === 'prepaid') continue;
     const idx = Math.max(0, Math.min(TOTAL_DAYS, daysBetween(TRIP_START, e.expense_date) + 1));
     byDay[idx] += Number(e.amount);
   }
