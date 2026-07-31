@@ -23,13 +23,21 @@ Tudo o que muda com a viagem está em `src/config.js`:
 - `BOOKINGS` — reservas de alojamento confirmadas (adicionar Zaragoza, Chamonix, …)
 - `SEED_EXPENSES` — despesas pré-carregadas no primeiro arranque
 
-### Pacing
+### Grupos de categoria
 
-Como se calcula "quanto deveria já ter sido gasto até hoje":
+Cada categoria pertence a um `group`, que decide como entra na leitura:
 
-- `daily` — `(planned / TOTAL_DAYS) × dias decorridos`
-- `booked` — soma das reservas cujo `paidBy` já passou (usado no Alojamento, que é
-  pago em blocos antecipados)
+- `variable` — gasto do dia-a-dia. Tem ritmo: o "esperado até hoje" é
+  `(planned / TOTAL_DAYS) × dias decorridos`, e entra no gráfico de acumulado.
+- `prepaid` — pago em blocos antecipados, muitas vezes antes da viagem começar
+  (é o caso do Alojamento). **Fica fora do ritmo diário**: misturar €8354 de
+  reservas pré-pagas com o gasto diário distorce o "gasto vs esperado" — bastava
+  pagar um hotel adiantado para o dashboard acusar milhares acima do previsto.
+  Mostra-se pago vs total, e é excluído do gráfico de acumulado para a linha não
+  dar saltos verticais.
+
+O `/api/summary` devolve por isso três blocos: `variable` (com ritmo),
+`prepaid` (pago vs total) e `totals` (a viagem toda).
 
 ## API
 

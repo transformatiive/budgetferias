@@ -27,7 +27,7 @@
         <h1 class="header__title">Férias<span class="header__title-accent">.</span></h1>
 
         <div class="hero">
-          <span class="hero__label mono">Gasto até agora</span>
+          <span class="hero__label mono">Gasto na viagem</span>
           <div class="hero__value" id="totalSpent">—</div>
           <div class="hero__sub mono" id="totalPlanned">—</div>
         </div>
@@ -46,6 +46,10 @@
             <span class="stat__label mono">Diferença</span>
             <span class="stat__value" id="totalDiff">—</span>
           </div>
+        </div>
+        <div class="header__prepaid">
+          <span class="mono" id="prepaidLabel">—</span>
+          <span class="mono" id="prepaidValue">—</span>
         </div>
       </div>
     </header>
@@ -71,10 +75,16 @@
       </section>
 
       <div class="section-label reveal">
-        <span class="mono">Por categoria</span>
+        <span class="mono">Gasto variável</span>
         <hr />
       </div>
       <section id="categoryCards"></section>
+
+      <div class="section-label reveal">
+        <span class="mono">Pré-pago</span>
+        <hr />
+      </div>
+      <section id="prepaidCards"></section>
 
       <div class="section-label reveal">
         <span class="mono">Despesas</span>

@@ -7,9 +7,11 @@
 const TRIP_START = '2026-07-27'; // dia 1
 const TOTAL_DAYS = 18;
 
-// pacing:
-//   'daily'  -> (planned / TOTAL_DAYS) * dias decorridos
-//   'booked' -> soma das reservas cujo paidBy ja passou
+// group:
+//   'variable' -> gasto do dia-a-dia; entra no ritmo (esperado ate hoje) e no
+//                 grafico de acumulado
+//   'prepaid'  -> pago em blocos antecipados, muitas vezes antes da viagem
+//                 comecar. Nao tem ritmo diario: mostra-se pago vs total.
 //
 // `planned` e `note` sao apenas valores por omissao: podem ser alterados em
 // runtime via PUT /api/budget/:category, e essa alteracao (guardada na base de
@@ -19,42 +21,43 @@ const CATEGORIES = [
     category: 'refeicoes',
     label: 'Refeições',
     planned: 1980,
-    pacing: 'daily',
+    group: 'variable',
     pacingLabel: 'média diária do orçamento',
   },
   {
     category: 'alojamento',
     label: 'Alojamento',
     planned: 8354,
-    pacing: 'booked',
-    pacingLabel: 'com base nas reservas já pagas',
+    group: 'prepaid',
+    pacingLabel: 'pago em blocos antecipados',
     note: 'Reservas confirmadas: Douro, Vitoria, Nîmes, Lugano, Zermatt, St. Moritz, Lyon. Falta Zaragoza e Chamonix.',
   },
   {
     category: 'atividades',
     label: 'Atividades / Teleféricos',
     planned: 1920,
-    pacing: 'daily',
+    group: 'variable',
     pacingLabel: 'média diária do orçamento',
   },
   {
     category: 'transporte',
     label: 'Tesla + Portagens',
     planned: 555,
-    pacing: 'daily',
+    group: 'variable',
     pacingLabel: 'média diária do orçamento',
   },
   {
     category: 'outros',
     label: 'Outros',
     planned: 0,
-    pacing: 'daily',
+    group: 'variable',
     pacingLabel: 'sem orçamento previsto',
   },
 ];
 
-// Reservas de alojamento confirmadas. Adicionar aqui as que faltam
-// (Zaragoza, Chamonix, ...) assim que estiverem confirmadas.
+// Reservas de alojamento confirmadas, como referencia do que compoe o
+// orcamento de alojamento. Adicionar aqui as que faltam (Zaragoza, Chamonix)
+// assim que estiverem confirmadas, e atualizar `planned` em conformidade.
 const BOOKINGS = [
   { name: 'Quinta Alto do Rio (Douro)', paidBy: '2026-07-27', amount: 1141.92 },
   { name: 'Kora Green City Aparthotel (Vitoria)', paidBy: '2026-07-30', amount: 187.0 },

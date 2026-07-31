@@ -29,7 +29,7 @@ const mono = (extra = {}) => ({
 
 const COLORS = { spent: '#b4552d', expected: '#78896f', track: '#ece6d8', ink: '#1a1c18' };
 
-const state = { summary: null, expenses: [], categories: [] };
+const state = { summary: null, expenses: [], categories: [], variableCats: [], prepaidCats: [] };
 
 async function api(path, options) {
   const res = await fetch(path, options);
@@ -46,45 +46,52 @@ async function load() {
   state.summary = summary;
   state.expenses = expenses;
   state.categories = summary.categories;
+  state.variableCats = summary.categories.filter((c) => c.group !== 'prepaid');
+  state.prepaidCats = summary.categories.filter((c) => c.group === 'prepaid');
   renderHeader();
   renderBarChart();
   renderLineChart();
   renderCategoryCards();
+  renderPrepaidCards();
   renderExpenses();
 }
 
 // ---------------------------------------------------------------- header
 
 function renderHeader() {
-  const { totals, tripDay, totalDays } = state.summary;
+  const { variable, prepaid, totals, tripDay, totalDays } = state.summary;
 
   document.getElementById('tripDay').textContent =
     tripDay === 0 ? 'antes da partida' : `dia ${tripDay}/${totalDays}`;
-  document.getElementById('totalSpent').textContent = euro(totals.spent);
-  document.getElementById('totalPlanned').textContent = `de ${euro0(totals.planned)} previstos`;
-  document.getElementById('totalExpected').textContent = euro(totals.expectedSoFar);
+  document.getElementById('totalSpent').textContent = euro(variable.spent);
+  document.getElementById('totalPlanned').textContent = `de ${euro0(variable.planned)} previstos`;
+  document.getElementById('totalExpected').textContent = euro(variable.expectedSoFar);
 
-  const pct = totals.planned > 0 ? Math.min(100, (totals.spent / totals.planned) * 100) : 0;
+  const pct = variable.planned > 0 ? Math.min(100, (variable.spent / variable.planned) * 100) : 0;
   document.getElementById('headerBar').style.width = pct + '%';
 
   const tick = document.getElementById('headerTick');
-  if (totals.planned > 0 && totals.expectedSoFar > 0) {
+  if (variable.planned > 0 && variable.expectedSoFar > 0) {
     tick.hidden = false;
-    tick.style.left = Math.min(100, (totals.expectedSoFar / totals.planned) * 100) + '%';
+    tick.style.left = Math.min(100, (variable.expectedSoFar / variable.planned) * 100) + '%';
   } else {
     tick.hidden = true;
   }
 
   const diff = document.getElementById('totalDiff');
-  const over = totals.diffSoFar >= 0;
-  diff.textContent = signed(totals.diffSoFar);
+  const over = variable.diffSoFar >= 0;
+  diff.textContent = signed(variable.diffSoFar);
   diff.className = 'stat__value ' + (over ? 'stat__value--over' : 'stat__value--under');
+
+  document.getElementById('prepaidLabel').textContent =
+    `+ alojamento ${euro0(prepaid.spent)} de ${euro0(prepaid.planned)}`;
+  document.getElementById('prepaidValue').textContent = `viagem ${euro0(totals.spent)}`;
 }
 
 // ---------------------------------------------------------------- gráficos
 
 function renderBarChart() {
-  const cats = state.categories;
+  const cats = state.variableCats;
   const W = 340;
   const blockH = 56;
   const H = cats.length * blockH;
@@ -197,7 +204,7 @@ function renderLineChart() {
 
 function renderCategoryCards() {
   const wrap = document.getElementById('categoryCards');
-  wrap.innerHTML = state.categories
+  wrap.innerHTML = state.variableCats
     .map((c) => {
       const pct = c.planned > 0 ? Math.min(100, (c.spent / c.planned) * 100) : c.spent > 0 ? 100 : 0;
       const markerPct = c.planned > 0 ? Math.min(100, (c.expectedSoFar / c.planned) * 100) : 0;
@@ -218,6 +225,34 @@ function renderCategoryCards() {
         <div class="cat__figures">
           <span>gasto <strong>${euro0(c.spent)}</strong></span>
           <span>esperado <strong>${euro0(c.expectedSoFar)}</strong></span>
+          <span>total <strong>${euro0(c.planned)}</strong></span>
+        </div>
+        ${c.note ? `<p class="cat__note">${esc(c.note)}</p>` : ''}
+      </article>`;
+    })
+    .join('');
+}
+
+function renderPrepaidCards() {
+  const wrap = document.getElementById('prepaidCards');
+  wrap.innerHTML = state.prepaidCats
+    .map((c) => {
+      const pct = c.planned > 0 ? Math.min(100, (c.spent / c.planned) * 100) : c.spent > 0 ? 100 : 0;
+      return `
+      <article class="card">
+        <div class="cat__head">
+          <div>
+            <h3 class="cat__name">${esc(c.label)}</h3>
+            <p class="cat__pacing">${esc(c.pacingLabel)}</p>
+          </div>
+          <span class="cat__diff cat__diff--neutral">${Math.round(pct)}% pago</span>
+        </div>
+        <div class="cat__bar">
+          <div class="cat__fill cat__fill--prepaid" style="width:${pct}%"></div>
+        </div>
+        <div class="cat__figures">
+          <span>pago <strong>${euro0(c.spent)}</strong></span>
+          <span>falta <strong>${euro0(c.remaining)}</strong></span>
           <span>total <strong>${euro0(c.planned)}</strong></span>
         </div>
         ${c.note ? `<p class="cat__note">${esc(c.note)}</p>` : ''}
