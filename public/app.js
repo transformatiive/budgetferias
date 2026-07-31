@@ -10,6 +10,12 @@ const esc = (s) =>
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+/** Data do dia N da viagem (1 = TRIP_START). */
+const dayToDate = (tripStart, day) => {
+  const t = Date.parse(`${tripStart}T00:00:00Z`) + (day - 1) * 86400000;
+  return new Date(t).toISOString().slice(0, 10);
+};
+
 /** '2026-07-31' -> '31 jul' */
 const shortDate = (iso) => {
   const [, m, d] = iso.split('-');
@@ -92,30 +98,29 @@ function renderHeader() {
 // ---------------------------------------------------------------- gráficos
 
 function renderLineChart() {
-  const series = state.summary.cumulative;
+  const { cumulativeTotal, cumulative, totalDays, tripStart, today } = state.summary;
   const W = 340;
-  const H = 168;
-  const pad = { top: 14, right: 6, bottom: 24, left: 40 };
+  const H = 178;
+  const pad = { top: 14, right: 6, bottom: 26, left: 44 };
   const svg = svgRoot(W, H);
   const meta = document.getElementById('lineMeta');
 
-  if (series.length === 0) {
+  if (cumulativeTotal.length === 0) {
     svg.appendChild(el('text', mono({ x: W / 2, y: H / 2, 'text-anchor': 'middle' }), 'sem dados'));
     document.getElementById('lineChart').replaceChildren(svg);
     meta.textContent = '—';
     return;
   }
 
-  const totalDays = state.summary.totalDays;
-  const max = Math.max(1, ...series.map((p) => p.total));
-  const last = series[series.length - 1];
+  const last = cumulativeTotal[cumulativeTotal.length - 1];
+  const max = Math.max(1, ...cumulativeTotal.map((p) => p.total));
   const x = (d) => pad.left + (d / totalDays) * (W - pad.left - pad.right);
   const y = (v) => H - pad.bottom - (v / max) * (H - pad.top - pad.bottom);
 
-  meta.textContent = `${euro0(last.total)} até ${shortDate(state.summary.today)}`;
+  meta.textContent = `${euro0(last.total)} até ${shortDate(today)}`;
 
   const grad = el('linearGradient', { id: 'areaFill', x1: '0', y1: '0', x2: '0', y2: '1' });
-  grad.appendChild(el('stop', { offset: '0%', 'stop-color': COLORS.spent, 'stop-opacity': '0.22' }));
+  grad.appendChild(el('stop', { offset: '0%', 'stop-color': COLORS.spent, 'stop-opacity': '0.2' }));
   grad.appendChild(el('stop', { offset: '100%', 'stop-color': COLORS.spent, 'stop-opacity': '0' }));
   const defs = el('defs');
   defs.appendChild(grad);
@@ -124,28 +129,22 @@ function renderLineChart() {
   for (let i = 0; i <= 2; i++) {
     const v = (max / 2) * i;
     svg.appendChild(
-      el('line', {
-        x1: pad.left,
-        y1: y(v),
-        x2: W - pad.right,
-        y2: y(v),
-        stroke: '#e8e1d3',
-        'stroke-width': 1,
-      })
+      el('line', { x1: pad.left, y1: y(v), x2: W - pad.right, y2: y(v), stroke: '#e8e1d3', 'stroke-width': 1 })
     );
     svg.appendChild(el('text', mono({ x: pad.left - 8, y: y(v) + 3, 'text-anchor': 'end' }), euro0(v)));
   }
 
-  const pts = series.map((p) => `${x(p.day)},${y(p.total)}`).join(' ');
+  // linha principal: gasto total, tudo o que ja saiu da conta
+  const ptsTotal = cumulativeTotal.map((p) => `${x(p.day)},${y(p.total)}`).join(' ');
   svg.appendChild(
     el('polygon', {
-      points: `${x(series[0].day)},${y(0)} ${pts} ${x(last.day)},${y(0)}`,
+      points: `${x(cumulativeTotal[0].day)},${y(0)} ${ptsTotal} ${x(last.day)},${y(0)}`,
       fill: 'url(#areaFill)',
     })
   );
   svg.appendChild(
     el('polyline', {
-      points: pts,
+      points: ptsTotal,
       fill: 'none',
       stroke: COLORS.spent,
       'stroke-width': 2.5,
@@ -153,12 +152,31 @@ function renderLineChart() {
       'stroke-linecap': 'round',
     })
   );
+
+  // linha secundaria: so o gasto variavel, sem os degraus do alojamento
+  if (cumulative.length) {
+    svg.appendChild(
+      el('polyline', {
+        points: cumulative.map((p) => `${x(p.day)},${y(p.total)}`).join(' '),
+        fill: 'none',
+        stroke: COLORS.expected,
+        'stroke-width': 2,
+        'stroke-dasharray': '4 3',
+        'stroke-linejoin': 'round',
+        'stroke-linecap': 'round',
+      })
+    );
+  }
+
   svg.appendChild(
     el('circle', { cx: x(last.day), cy: y(last.total), r: 4, fill: COLORS.spent, stroke: '#fffdf7', 'stroke-width': 2 })
   );
 
-  for (let d = 1; d <= totalDays; d += 3) {
-    svg.appendChild(el('text', mono({ x: x(d), y: H - 6, 'text-anchor': 'middle' }), String(d)));
+  // eixo x com datas, nao com numeros de dia
+  for (let d = 1; d <= totalDays; d += 4) {
+    svg.appendChild(
+      el('text', mono({ x: x(d), y: H - 6, 'text-anchor': 'middle' }), shortDate(dayToDate(tripStart, d)))
+    );
   }
 
   document.getElementById('lineChart').replaceChildren(svg);
