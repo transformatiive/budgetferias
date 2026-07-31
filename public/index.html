@@ -3,84 +3,119 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#26392c" />
+    <meta name="theme-color" content="#1f2f24" />
     <title>Orçamento Férias — Suíça 2026</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2326392c'/%3E%3Cpath d='M16 6l7 13H9z' fill='%23f7f4ee'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f2f24'/%3E%3Cpath d='M16 6l7 13H9z' fill='%23f7f4ee'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="grain" aria-hidden="true"></div>
+
     <header class="header">
-      <div class="header__top">
-        <h1 class="header__title">Férias Suíça</h1>
-        <span class="header__day mono" id="tripDay">—</span>
-      </div>
-      <div class="header__figures">
-        <div class="figure">
-          <span class="figure__label mono">Gasto</span>
-          <span class="figure__value" id="totalSpent">—</span>
+      <div class="header__inner">
+        <div class="header__top">
+          <span class="eyebrow">Suíça · Jul—Ago 2026</span>
+          <span class="daychip mono" id="tripDay">—</span>
         </div>
-        <div class="figure figure--right">
-          <span class="figure__label mono">Esperado até hoje</span>
-          <span class="figure__value" id="totalExpected">—</span>
+
+        <h1 class="header__title">Férias<span class="header__title-accent">.</span></h1>
+
+        <div class="hero">
+          <span class="hero__label mono">Gasto até agora</span>
+          <div class="hero__value" id="totalSpent">—</div>
+          <div class="hero__sub mono" id="totalPlanned">—</div>
         </div>
-      </div>
-      <div class="bar bar--header"><div class="bar__fill" id="headerBar"></div></div>
-      <div class="header__foot">
-        <span class="pill mono" id="totalDiff">—</span>
-        <span class="header__note mono" id="totalPlanned">—</span>
+
+        <div class="track" id="track">
+          <div class="track__fill" id="headerBar"></div>
+          <div class="track__tick" id="headerTick" hidden><span class="track__tick-label mono">esperado</span></div>
+        </div>
+
+        <div class="header__stats">
+          <div class="stat">
+            <span class="stat__label mono">Esperado até hoje</span>
+            <span class="stat__value" id="totalExpected">—</span>
+          </div>
+          <div class="stat stat--end">
+            <span class="stat__label mono">Diferença</span>
+            <span class="stat__value" id="totalDiff">—</span>
+          </div>
+        </div>
       </div>
     </header>
 
     <main class="main">
-      <section class="card">
-        <h2 class="card__title">Gasto vs esperado</h2>
-        <div class="chart-scroll"><div id="barChart" class="chart"></div></div>
-        <div class="legend mono">
-          <span><i class="swatch swatch--spent"></i>gasto</span>
-          <span><i class="swatch swatch--expected"></i>esperado</span>
+      <section class="card reveal">
+        <div class="card__head">
+          <h2 class="card__title">Gasto vs esperado</h2>
+          <span class="legend mono">
+            <span><i class="swatch swatch--spent"></i>gasto</span>
+            <span><i class="swatch swatch--expected"></i>esperado</span>
+          </span>
         </div>
+        <div id="barChart" class="chart"></div>
       </section>
 
-      <section class="card">
-        <h2 class="card__title">Acumulado ao longo da viagem</h2>
-        <div class="chart-scroll"><div id="lineChart" class="chart"></div></div>
+      <section class="card reveal">
+        <div class="card__head">
+          <h2 class="card__title">Acumulado</h2>
+          <span class="card__meta mono" id="lineMeta">—</span>
+        </div>
+        <div id="lineChart" class="chart"></div>
       </section>
 
+      <div class="section-label reveal">
+        <span class="mono">Por categoria</span>
+        <hr />
+      </div>
       <section id="categoryCards"></section>
 
-      <section class="card">
-        <h2 class="card__title">Despesas</h2>
+      <div class="section-label reveal">
+        <span class="mono">Despesas</span>
+        <hr />
+      </div>
+      <section class="card card--flush reveal">
         <ul class="expenses" id="expenseList"></ul>
       </section>
     </main>
 
-    <button class="fab" id="openForm" type="button">+ Registar Despesa</button>
+    <div class="fab-dock">
+      <button class="fab" id="openForm" type="button">
+        <span class="fab__plus" aria-hidden="true">+</span> Registar despesa
+      </button>
+    </div>
 
     <div class="sheet" id="sheet" hidden>
       <div class="sheet__backdrop" data-close></div>
       <form class="sheet__panel" id="expenseForm" novalidate>
+        <div class="sheet__handle" aria-hidden="true"></div>
         <div class="sheet__head">
-          <h2 class="card__title">Nova despesa</h2>
+          <h2 class="sheet__title">Nova despesa</h2>
           <button type="button" class="sheet__close" data-close aria-label="Fechar">&times;</button>
         </div>
         <label class="field">
           <span class="field__label mono">Descrição</span>
-          <input name="description" type="text" required autocomplete="off" />
+          <input name="description" type="text" required autocomplete="off" placeholder="Jantar em Zermatt" />
         </label>
         <label class="field">
           <span class="field__label mono">Categoria</span>
-          <select name="category" id="categorySelect" required></select>
+          <div class="select-wrap">
+            <select name="category" id="categorySelect" required></select>
+          </div>
         </label>
         <div class="field-row">
           <label class="field">
-            <span class="field__label mono">Valor (€)</span>
-            <input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" required />
+            <span class="field__label mono">Valor</span>
+            <div class="input-prefix">
+              <span aria-hidden="true">€</span>
+              <input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00" />
+            </div>
           </label>
           <label class="field">
             <span class="field__label mono">Data</span>
@@ -88,11 +123,11 @@
           </label>
         </div>
         <label class="field">
-          <span class="field__label mono">Nota (opcional)</span>
-          <input name="note" type="text" autocomplete="off" />
+          <span class="field__label mono">Nota <span class="field__hint">opcional</span></span>
+          <input name="note" type="text" autocomplete="off" placeholder="—" />
         </label>
-        <p class="form-error mono" id="formError" hidden></p>
-        <button class="submit" type="submit">Guardar</button>
+        <p class="form-error" id="formError" hidden></p>
+        <button class="submit" type="submit">Guardar despesa</button>
       </form>
     </div>
 

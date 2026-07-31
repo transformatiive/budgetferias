@@ -4,8 +4,11 @@ const euro = (n) =>
   '€' + Number(n).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const euro0 = (n) => '€' + Math.round(Number(n)).toLocaleString('pt-PT');
 const signed = (n) => (n >= 0 ? '+' : '−') + euro(Math.abs(n));
+const signed0 = (n) => (n >= 0 ? '+' : '−') + euro0(Math.abs(n));
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const el = (name, attrs = {}, text) => {
@@ -14,12 +17,19 @@ const el = (name, attrs = {}, text) => {
   if (text !== undefined) node.textContent = text;
   return node;
 };
-const svgRoot = (w, h) => {
-  const s = el('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'xMidYMid meet', role: 'img' });
-  return s;
-};
+const svgRoot = (w, h) =>
+  el('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'xMidYMid meet', role: 'img' });
+const mono = (extra = {}) => ({
+  'font-family': 'IBM Plex Mono, monospace',
+  'font-size': '9',
+  'letter-spacing': '0.06em',
+  fill: '#8b8f84',
+  ...extra,
+});
 
-let state = { summary: null, expenses: [], categories: [] };
+const COLORS = { spent: '#b4552d', expected: '#78896f', track: '#ece6d8', ink: '#1a1c18' };
+
+const state = { summary: null, expenses: [], categories: [] };
 
 async function api(path, options) {
   const res = await fetch(path, options);
@@ -48,19 +58,28 @@ async function load() {
 
 function renderHeader() {
   const { totals, tripDay, totalDays } = state.summary;
+
   document.getElementById('tripDay').textContent =
-    tripDay === 0 ? 'antes da partida' : `dia ${tripDay} de ${totalDays}`;
+    tripDay === 0 ? 'antes da partida' : `dia ${tripDay}/${totalDays}`;
   document.getElementById('totalSpent').textContent = euro(totals.spent);
+  document.getElementById('totalPlanned').textContent = `de ${euro0(totals.planned)} previstos`;
   document.getElementById('totalExpected').textContent = euro(totals.expectedSoFar);
 
   const pct = totals.planned > 0 ? Math.min(100, (totals.spent / totals.planned) * 100) : 0;
   document.getElementById('headerBar').style.width = pct + '%';
 
-  const diff = document.getElementById('totalDiff');
-  diff.textContent = `${signed(totals.diffSoFar)} ${totals.diffSoFar >= 0 ? 'acima' : 'abaixo'}`;
-  diff.className = 'pill mono ' + (totals.diffSoFar >= 0 ? 'pill--over' : 'pill--under');
+  const tick = document.getElementById('headerTick');
+  if (totals.planned > 0 && totals.expectedSoFar > 0) {
+    tick.hidden = false;
+    tick.style.left = Math.min(100, (totals.expectedSoFar / totals.planned) * 100) + '%';
+  } else {
+    tick.hidden = true;
+  }
 
-  document.getElementById('totalPlanned').textContent = `orçamento ${euro0(totals.planned)}`;
+  const diff = document.getElementById('totalDiff');
+  const over = totals.diffSoFar >= 0;
+  diff.textContent = signed(totals.diffSoFar);
+  diff.className = 'stat__value ' + (over ? 'stat__value--over' : 'stat__value--under');
 }
 
 // ---------------------------------------------------------------- gráficos
@@ -68,127 +87,111 @@ function renderHeader() {
 function renderBarChart() {
   const cats = state.categories;
   const W = 340;
-  const rowH = 46;
-  const H = cats.length * rowH + 8;
-  const labelW = 96;
-  const chartW = W - labelW - 42;
+  const blockH = 56;
+  const H = cats.length * blockH;
+  const barW = 250;
   const max = Math.max(1, ...cats.flatMap((c) => [c.spent, c.expectedSoFar]));
-
   const svg = svgRoot(W, H);
+
   cats.forEach((c, i) => {
-    const y = i * rowH + 6;
+    const top = i * blockH;
     svg.appendChild(
-      el(
-        'text',
-        { x: 0, y: y + 14, 'font-size': '9', fill: '#6b6f66', 'font-family': 'IBM Plex Mono, monospace' },
-        c.label.length > 15 ? c.label.slice(0, 14) + '…' : c.label
-      )
+      el('text', mono({ x: 0, y: top + 10, fill: '#5e6459', 'text-transform': 'uppercase' }), c.label)
     );
-    const bars = [
-      { v: c.spent, color: '#b4552d', dy: 0 },
-      { v: c.expectedSoFar, color: '#7d8b74', dy: 15 },
-    ];
-    for (const b of bars) {
-      const w = Math.max(b.v > 0 ? 2 : 0, (b.v / max) * chartW);
+
+    [
+      { v: c.spent, color: COLORS.spent, y: top + 20 },
+      { v: c.expectedSoFar, color: COLORS.expected, y: top + 34 },
+    ].forEach((b) => {
       svg.appendChild(
-        el('rect', { x: labelW, y: y + 20 + b.dy - 12, width: w, height: 11, rx: 2, fill: b.color })
+        el('rect', { x: 0, y: b.y, width: barW, height: 7, rx: 3.5, fill: COLORS.track })
       );
+      const w = (b.v / max) * barW;
+      if (w > 0) {
+        svg.appendChild(
+          el('rect', { x: 0, y: b.y, width: Math.max(3, w), height: 7, rx: 3.5, fill: b.color })
+        );
+      }
       svg.appendChild(
-        el(
-          'text',
-          {
-            x: labelW + w + 5,
-            y: y + 20 + b.dy - 3,
-            'font-size': '9',
-            fill: '#6b6f66',
-            'font-family': 'IBM Plex Mono, monospace',
-          },
-          euro0(b.v)
-        )
+        el('text', mono({ x: W, y: b.y + 7, 'text-anchor': 'end', fill: b.color }), euro0(b.v))
       );
-    }
+    });
   });
 
-  const box = document.getElementById('barChart');
-  box.replaceChildren(svg);
+  document.getElementById('barChart').replaceChildren(svg);
 }
 
 function renderLineChart() {
   const series = state.summary.cumulative;
   const W = 340;
-  const H = 170;
-  const pad = { top: 12, right: 10, bottom: 22, left: 40 };
+  const H = 168;
+  const pad = { top: 14, right: 6, bottom: 24, left: 40 };
   const svg = svgRoot(W, H);
-  const box = document.getElementById('lineChart');
+  const meta = document.getElementById('lineMeta');
 
   if (series.length === 0) {
-    svg.appendChild(
-      el('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', 'font-size': '11', fill: '#6b6f66' }, 'sem dados')
-    );
-    box.replaceChildren(svg);
+    svg.appendChild(el('text', mono({ x: W / 2, y: H / 2, 'text-anchor': 'middle' }), 'sem dados'));
+    document.getElementById('lineChart').replaceChildren(svg);
+    meta.textContent = '—';
     return;
   }
 
   const totalDays = state.summary.totalDays;
   const max = Math.max(1, ...series.map((p) => p.total));
+  const last = series[series.length - 1];
   const x = (d) => pad.left + (d / totalDays) * (W - pad.left - pad.right);
   const y = (v) => H - pad.bottom - (v / max) * (H - pad.top - pad.bottom);
 
-  // grelha + eixo Y
+  meta.textContent = `${euro0(last.total)} ao dia ${last.day}`;
+
+  const grad = el('linearGradient', { id: 'areaFill', x1: '0', y1: '0', x2: '0', y2: '1' });
+  grad.appendChild(el('stop', { offset: '0%', 'stop-color': COLORS.spent, 'stop-opacity': '0.22' }));
+  grad.appendChild(el('stop', { offset: '100%', 'stop-color': COLORS.spent, 'stop-opacity': '0' }));
+  const defs = el('defs');
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+
   for (let i = 0; i <= 2; i++) {
     const v = (max / 2) * i;
     svg.appendChild(
-      el('line', { x1: pad.left, y1: y(v), x2: W - pad.right, y2: y(v), stroke: '#ded8cb', 'stroke-width': 1 })
+      el('line', {
+        x1: pad.left,
+        y1: y(v),
+        x2: W - pad.right,
+        y2: y(v),
+        stroke: '#e8e1d3',
+        'stroke-width': 1,
+      })
     );
-    svg.appendChild(
-      el(
-        'text',
-        {
-          x: pad.left - 5,
-          y: y(v) + 3,
-          'text-anchor': 'end',
-          'font-size': '8',
-          fill: '#6b6f66',
-          'font-family': 'IBM Plex Mono, monospace',
-        },
-        euro0(v)
-      )
-    );
+    svg.appendChild(el('text', mono({ x: pad.left - 8, y: y(v) + 3, 'text-anchor': 'end' }), euro0(v)));
   }
 
   const pts = series.map((p) => `${x(p.day)},${y(p.total)}`).join(' ');
-  const last = series[series.length - 1];
   svg.appendChild(
     el('polygon', {
       points: `${x(series[0].day)},${y(0)} ${pts} ${x(last.day)},${y(0)}`,
-      fill: '#b4552d',
-      'fill-opacity': '0.12',
+      fill: 'url(#areaFill)',
     })
   );
   svg.appendChild(
-    el('polyline', { points: pts, fill: 'none', stroke: '#b4552d', 'stroke-width': 2, 'stroke-linejoin': 'round' })
+    el('polyline', {
+      points: pts,
+      fill: 'none',
+      stroke: COLORS.spent,
+      'stroke-width': 2.5,
+      'stroke-linejoin': 'round',
+      'stroke-linecap': 'round',
+    })
   );
-  svg.appendChild(el('circle', { cx: x(last.day), cy: y(last.total), r: 3.5, fill: '#b4552d' }));
+  svg.appendChild(
+    el('circle', { cx: x(last.day), cy: y(last.total), r: 4, fill: COLORS.spent, stroke: '#fffdf7', 'stroke-width': 2 })
+  );
 
-  // eixo X (dias da viagem)
   for (let d = 1; d <= totalDays; d += 3) {
-    svg.appendChild(
-      el(
-        'text',
-        {
-          x: x(d),
-          y: H - 6,
-          'text-anchor': 'middle',
-          'font-size': '8',
-          fill: '#6b6f66',
-          'font-family': 'IBM Plex Mono, monospace',
-        },
-        'd' + d
-      )
-    );
+    svg.appendChild(el('text', mono({ x: x(d), y: H - 6, 'text-anchor': 'middle' }), String(d)));
   }
 
-  box.replaceChildren(svg);
+  document.getElementById('lineChart').replaceChildren(svg);
 }
 
 // ---------------------------------------------------------------- cartões
@@ -205,19 +208,20 @@ function renderCategoryCards() {
         <div class="cat__head">
           <div>
             <h3 class="cat__name">${esc(c.label)}</h3>
-            <p class="cat__note">${esc(c.pacingLabel)}</p>
+            <p class="cat__pacing">${esc(c.pacingLabel)}</p>
           </div>
-          <span class="cat__diff ${over ? 'cat__diff--over' : 'cat__diff--under'}">${signed(c.diffSoFar)}</span>
+          <span class="cat__diff ${over ? 'cat__diff--over' : 'cat__diff--under'}">${signed0(c.diffSoFar)}</span>
         </div>
         <div class="cat__bar">
-          <div class="bar"><div class="bar__fill" style="width:${pct}%"></div></div>
+          <div class="cat__fill" style="width:${pct}%"></div>
           ${c.planned > 0 ? `<div class="cat__marker" style="left:${markerPct}%"></div>` : ''}
         </div>
-        <div class="cat__figures mono">
+        <div class="cat__figures">
           <span>gasto <strong>${euro0(c.spent)}</strong></span>
           <span>esperado <strong>${euro0(c.expectedSoFar)}</strong></span>
           <span>total <strong>${euro0(c.planned)}</strong></span>
         </div>
+        ${c.note ? `<p class="cat__note">${esc(c.note)}</p>` : ''}
       </article>`;
     })
     .join('');
@@ -233,19 +237,23 @@ function renderExpenses() {
   }
   const labels = Object.fromEntries(state.categories.map((c) => [c.category, c.label]));
   list.innerHTML = state.expenses
-    .map(
-      (e) => `
+    .map((e) => {
+      const [, m, d] = e.expense_date.split('-');
+      return `
       <li class="expense">
+        <div class="expense__day">
+          <b>${esc(d)}</b><span>${MONTHS[Number(m) - 1] || ''}</span>
+        </div>
         <div class="expense__main">
           <div class="expense__desc">${esc(e.description)}</div>
-          <div class="expense__meta mono">${esc(e.expense_date)} · ${esc(labels[e.category] || e.category)}${
+          <div class="expense__meta">${esc(labels[e.category] || e.category)}${
             e.note ? ' · ' + esc(e.note) : ''
           }</div>
         </div>
         <span class="expense__amount">${euro(e.amount)}</span>
         <button class="expense__del" type="button" data-id="${e.id}" aria-label="Apagar">&times;</button>
-      </li>`
-    )
+      </li>`;
+    })
     .join('');
 }
 
