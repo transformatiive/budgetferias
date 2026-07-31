@@ -35,6 +35,34 @@ function postgresDriver() {
           created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS budget_overrides (
+          category   TEXT PRIMARY KEY,
+          planned    NUMERIC(10,2),
+          note       TEXT,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+    },
+    async budgetOverrides() {
+      const { rows } = await pool.query(
+        `SELECT category, planned::float8 AS planned, note, updated_at FROM budget_overrides`
+      );
+      return rows;
+    },
+    async saveBudgetOverride(category, patch) {
+      // Só os campos presentes em `patch` sao atualizados; os restantes ficam como estao.
+      const sets = ['updated_at = NOW()'];
+      if ('planned' in patch) sets.push('planned = EXCLUDED.planned');
+      if ('note' in patch) sets.push('note = EXCLUDED.note');
+      const { rows } = await pool.query(
+        `INSERT INTO budget_overrides (category, planned, note)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (category) DO UPDATE SET ${sets.join(', ')}
+         RETURNING category, planned::float8 AS planned, note, updated_at`,
+        [category, patch.planned ?? null, patch.note ?? null]
+      );
+      return rows[0];
     },
     async count() {
       const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM expenses');
@@ -86,6 +114,29 @@ function sqliteDriver() {
           created_at   TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS budget_overrides (
+          category   TEXT PRIMARY KEY,
+          planned    REAL,
+          note       TEXT,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+    },
+    async budgetOverrides() {
+      return db.prepare('SELECT category, planned, note, updated_at FROM budget_overrides').all();
+    },
+    async saveBudgetOverride(category, patch) {
+      const sets = ["updated_at = datetime('now')"];
+      if ('planned' in patch) sets.push('planned = excluded.planned');
+      if ('note' in patch) sets.push('note = excluded.note');
+      db.prepare(
+        `INSERT INTO budget_overrides (category, planned, note) VALUES (?, ?, ?)
+         ON CONFLICT (category) DO UPDATE SET ${sets.join(', ')}`
+      ).run(category, patch.planned ?? null, patch.note ?? null);
+      return db
+        .prepare('SELECT category, planned, note, updated_at FROM budget_overrides WHERE category = ?')
+        .get(category);
     },
     async count() {
       return db.prepare('SELECT COUNT(*) AS n FROM expenses').get().n;
@@ -124,4 +175,6 @@ module.exports = {
   listExpenses: () => driver.list(),
   createExpense: (e) => driver.insert(e),
   deleteExpense: (id) => driver.remove(id),
+  budgetOverrides: () => driver.budgetOverrides(),
+  saveBudgetOverride: (category, patch) => driver.saveBudgetOverride(category, patch),
 };

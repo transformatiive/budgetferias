@@ -10,6 +10,10 @@ const TOTAL_DAYS = 18;
 // pacing:
 //   'daily'  -> (planned / TOTAL_DAYS) * dias decorridos
 //   'booked' -> soma das reservas cujo paidBy ja passou
+//
+// `planned` e `note` sao apenas valores por omissao: podem ser alterados em
+// runtime via PUT /api/budget/:category, e essa alteracao (guardada na base de
+// dados) prevalece sobre o que esta aqui.
 const CATEGORIES = [
   {
     category: 'refeicoes',
@@ -21,9 +25,10 @@ const CATEGORIES = [
   {
     category: 'alojamento',
     label: 'Alojamento',
-    planned: 1930,
+    planned: 8354,
     pacing: 'booked',
     pacingLabel: 'com base nas reservas já pagas',
+    note: 'Reservas confirmadas: Douro, Vitoria, Nîmes, Lugano, Zermatt, St. Moritz, Lyon. Falta Zaragoza e Chamonix.',
   },
   {
     category: 'atividades',

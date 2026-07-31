@@ -26,14 +26,38 @@ function bookedSoFar(today = todayISO()) {
   return BOOKINGS.filter((b) => b.paidBy <= today).reduce((s, b) => s + b.amount, 0);
 }
 
-function buildSummary(expenses, today = todayISO()) {
+/**
+ * Junta as categorias do config com os valores guardados via PUT /api/budget/:category.
+ * O que esta na base de dados prevalece; o config e apenas o valor por omissao.
+ */
+function effectiveBudgets(overrides = []) {
+  const byCategory = new Map(overrides.map((o) => [o.category, o]));
+  return CATEGORIES.map((c) => {
+    const o = byCategory.get(c.category);
+    const plannedOverridden = o != null && o.planned != null;
+    const noteOverridden = o != null && o.note != null;
+    return {
+      category: c.category,
+      label: c.label,
+      pacing: c.pacing,
+      pacingLabel: c.pacingLabel,
+      planned: plannedOverridden ? Number(o.planned) : c.planned,
+      note: noteOverridden ? o.note : c.note ?? null,
+      defaults: { planned: c.planned, note: c.note ?? null },
+      overridden: plannedOverridden || noteOverridden,
+      updatedAt: o ? o.updated_at : null,
+    };
+  });
+}
+
+function buildSummary(expenses, today = todayISO(), overrides = []) {
   const day = tripDay(today);
   const spentByCategory = new Map();
   for (const e of expenses) {
     spentByCategory.set(e.category, (spentByCategory.get(e.category) || 0) + Number(e.amount));
   }
 
-  const categories = CATEGORIES.map((c) => {
+  const categories = effectiveBudgets(overrides).map((c) => {
     const spent = round2(spentByCategory.get(c.category) || 0);
     const expectedSoFar =
       c.pacing === 'booked' ? round2(bookedSoFar(today)) : round2((c.planned / TOTAL_DAYS) * day);
@@ -43,6 +67,7 @@ function buildSummary(expenses, today = todayISO()) {
       planned: c.planned,
       pacing: c.pacing,
       pacingLabel: c.pacingLabel,
+      note: c.note,
       spent,
       expectedSoFar,
       diffSoFar: round2(spent - expectedSoFar),
@@ -93,4 +118,4 @@ function cumulativeSeries(expenses, today = todayISO()) {
   return out;
 }
 
-module.exports = { buildSummary, tripDay, bookedSoFar, todayISO, daysBetween };
+module.exports = { buildSummary, effectiveBudgets, tripDay, bookedSoFar, todayISO, daysBetween };

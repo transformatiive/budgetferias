@@ -38,7 +38,9 @@ Como se calcula "quanto deveria já ter sido gasto até hoje":
 | `POST` | `/api/expenses` | cria despesa — `{ description, category, amount, expense_date, note? }` |
 | `GET` | `/api/expenses` | lista todas (mais recente primeiro) |
 | `DELETE` | `/api/expenses/:id` | apaga uma |
-| `GET` | `/api/summary` | por categoria: `planned`, `spent`, `expectedSoFar`, `diffSoFar`, `pacingLabel` + totais |
+| `GET` | `/api/summary` | por categoria: `planned`, `spent`, `expectedSoFar`, `diffSoFar`, `pacingLabel`, `note` + totais |
+| `GET` | `/api/budget` | orçamentos previstos em vigor, por categoria |
+| `PUT` | `/api/budget/:category` | atualiza orçamento — `{ planned?, note? }` |
 | `GET` | `/api/config` | categorias e reservas configuradas |
 | `GET` | `/health` | estado do serviço |
 
@@ -52,6 +54,24 @@ curl -X POST https://<url>/api/expenses \
   -H 'Content-Type: application/json' \
   -d '{"description":"Jantar em Zermatt","category":"refeicoes","amount":45,"expense_date":"2026-08-09"}'
 ```
+
+### Alterar orçamentos sem mexer no código
+
+Os valores de `CATEGORIES` em `src/config.js` são apenas o **valor por omissão**.
+Qualquer alteração feita por `PUT /api/budget/:category` fica guardada na base de
+dados e prevalece sobre o config — sobrevive a redeploys.
+
+```bash
+# só o valor previsto
+curl -X PUT https://<url>/api/budget/atividades \
+  -H 'Content-Type: application/json' -d '{"planned":2100}'
+
+# só a nota (o planned mantém-se)
+curl -X PUT https://<url>/api/budget/alojamento \
+  -H 'Content-Type: application/json' -d '{"note":"Falta Zaragoza e Chamonix."}'
+```
+
+Campos omitidos ficam inalterados; `"note": null` limpa a nota e repõe a do config.
 
 ## Deploy
 
