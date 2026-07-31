@@ -88,6 +88,9 @@ function renderHeader() {
 
 function renderBarChart() {
   const cats = state.variableCats;
+  const { tripDay } = state.summary;
+  document.getElementById('legendExpected').textContent =
+    tripDay === 0 ? 'previsto' : `previsto até ao dia ${tripDay}`;
   const W = 340;
   const blockH = 56;
   const H = cats.length * blockH;
@@ -220,7 +223,7 @@ function renderCategoryCards() {
         </div>
         <div class="cat__figures">
           <span>gasto <strong>${euro0(c.spent)}</strong></span>
-          <span>esperado <strong>${euro0(c.expectedSoFar)}</strong></span>
+          <span>previsto <strong>${euro0(c.expectedSoFar)}</strong></span>
           <span>total <strong>${euro0(c.planned)}</strong></span>
         </div>
         ${c.note ? `<p class="cat__note">${esc(c.note)}</p>` : ''}

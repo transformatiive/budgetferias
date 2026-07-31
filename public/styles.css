@@ -318,6 +318,12 @@ body {
   margin-bottom: 16px;
 }
 
+.card__head--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .card__title {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 1.12rem;
