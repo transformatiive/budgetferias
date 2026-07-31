@@ -298,6 +298,13 @@ body {
   margin: 0;
 }
 
+.section-note {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: -6px 2px 0;
+}
+
 .card {
   background: var(--paper-raised);
   border: 1px solid var(--line-soft);

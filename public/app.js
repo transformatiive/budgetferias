@@ -10,6 +10,12 @@ const esc = (s) =>
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+/** '2026-07-31' -> '31 jul' */
+const shortDate = (iso) => {
+  const [, m, d] = iso.split('-');
+  return `${Number(d)} ${MONTHS[Number(m) - 1] || ''}`;
+};
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const el = (name, attrs = {}, text) => {
   const node = document.createElementNS(SVG_NS, name);
@@ -49,7 +55,6 @@ async function load() {
   state.variableCats = summary.categories.filter((c) => c.group !== 'prepaid');
   state.prepaidCats = summary.categories.filter((c) => c.group === 'prepaid');
   renderHeader();
-  renderBarChart();
   renderLineChart();
   renderCategoryCards();
   renderPrepaidCards();
@@ -86,46 +91,6 @@ function renderHeader() {
 
 // ---------------------------------------------------------------- gráficos
 
-function renderBarChart() {
-  const cats = state.variableCats;
-  const { tripDay } = state.summary;
-  document.getElementById('legendExpected').textContent =
-    tripDay === 0 ? 'previsto' : `previsto até ao dia ${tripDay}`;
-  const W = 340;
-  const blockH = 56;
-  const H = cats.length * blockH;
-  const barW = 250;
-  const max = Math.max(1, ...cats.flatMap((c) => [c.spent, c.expectedSoFar]));
-  const svg = svgRoot(W, H);
-
-  cats.forEach((c, i) => {
-    const top = i * blockH;
-    svg.appendChild(
-      el('text', mono({ x: 0, y: top + 10, fill: '#5e6459', 'text-transform': 'uppercase' }), c.label)
-    );
-
-    [
-      { v: c.spent, color: COLORS.spent, y: top + 20 },
-      { v: c.expectedSoFar, color: COLORS.expected, y: top + 34 },
-    ].forEach((b) => {
-      svg.appendChild(
-        el('rect', { x: 0, y: b.y, width: barW, height: 7, rx: 3.5, fill: COLORS.track })
-      );
-      const w = (b.v / max) * barW;
-      if (w > 0) {
-        svg.appendChild(
-          el('rect', { x: 0, y: b.y, width: Math.max(3, w), height: 7, rx: 3.5, fill: b.color })
-        );
-      }
-      svg.appendChild(
-        el('text', mono({ x: W, y: b.y + 7, 'text-anchor': 'end', fill: b.color }), euro0(b.v))
-      );
-    });
-  });
-
-  document.getElementById('barChart').replaceChildren(svg);
-}
-
 function renderLineChart() {
   const series = state.summary.cumulative;
   const W = 340;
@@ -147,7 +112,7 @@ function renderLineChart() {
   const x = (d) => pad.left + (d / totalDays) * (W - pad.left - pad.right);
   const y = (v) => H - pad.bottom - (v / max) * (H - pad.top - pad.bottom);
 
-  meta.textContent = `${euro0(last.total)} ao dia ${last.day}`;
+  meta.textContent = `${euro0(last.total)} até ${shortDate(state.summary.today)}`;
 
   const grad = el('linearGradient', { id: 'areaFill', x1: '0', y1: '0', x2: '0', y2: '1' });
   grad.appendChild(el('stop', { offset: '0%', 'stop-color': COLORS.spent, 'stop-opacity': '0.22' }));
@@ -202,6 +167,15 @@ function renderLineChart() {
 // ---------------------------------------------------------------- cartões
 
 function renderCategoryCards() {
+  const { tripDay, tripStart, today, totalDays } = state.summary;
+  // "Previsto" e a fatia do orcamento correspondente aos dias ja decorridos,
+  // do inicio da viagem (Douro) ate hoje.
+  document.getElementById('variablePeriod').textContent =
+    tripDay === 0
+      ? `A viagem começa a ${shortDate(tripStart)}.`
+      : `Previsto = parte do orçamento de ${shortDate(tripStart)} a ${shortDate(today)} ` +
+        `(${tripDay} de ${totalDays} dias).`;
+
   const wrap = document.getElementById('categoryCards');
   wrap.innerHTML = state.variableCats
     .map((c) => {
