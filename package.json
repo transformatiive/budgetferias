@@ -1,0 +1,19 @@
+{
+  "name": "budgetferias",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orcamento Ferias - Suica 2026",
+  "type": "commonjs",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
