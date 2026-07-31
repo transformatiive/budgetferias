@@ -244,6 +244,21 @@ body {
   color: #a8d0ae;
 }
 
+.header__prepaid {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--forest-mist);
+  font-size: 0.62rem;
+}
+
+.header__prepaid span:last-child {
+  color: var(--paper);
+  white-space: nowrap;
+}
+
 /* ---------- layout ---------- */
 
 .main {
@@ -342,7 +357,8 @@ body {
 
 /* ---------- cartões de categoria ---------- */
 
-#categoryCards {
+#categoryCards,
+#prepaidCards {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -402,6 +418,11 @@ body {
   background: rgba(55, 98, 75, 0.1);
 }
 
+.cat__diff--neutral {
+  color: var(--ink-2);
+  background: var(--paper-sunk);
+}
+
 .cat__bar {
   position: relative;
   height: 7px;
@@ -415,6 +436,10 @@ body {
   border-radius: 999px;
   background: var(--clay);
   transition: width 0.6s var(--ease);
+}
+
+.cat__fill--prepaid {
+  background: var(--forest-2);
 }
 
 .cat__marker {

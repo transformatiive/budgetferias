@@ -1,6 +1,6 @@
 'use strict';
 
-const { TRIP_START, TOTAL_DAYS, CATEGORIES, BOOKINGS } = require('./config');
+const { TRIP_START, TOTAL_DAYS, CATEGORIES } = require('./config');
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -22,10 +22,6 @@ function tripDay(today = todayISO()) {
   return Math.max(0, Math.min(TOTAL_DAYS, day));
 }
 
-function bookedSoFar(today = todayISO()) {
-  return BOOKINGS.filter((b) => b.paidBy <= today).reduce((s, b) => s + b.amount, 0);
-}
-
 /**
  * Junta as categorias do config com os valores guardados via PUT /api/budget/:category.
  * O que esta na base de dados prevalece; o config e apenas o valor por omissao.
@@ -39,7 +35,7 @@ function effectiveBudgets(overrides = []) {
     return {
       category: c.category,
       label: c.label,
-      pacing: c.pacing,
+      group: c.group,
       pacingLabel: c.pacingLabel,
       planned: plannedOverridden ? Number(o.planned) : c.planned,
       note: noteOverridden ? o.note : c.note ?? null,
@@ -50,22 +46,43 @@ function effectiveBudgets(overrides = []) {
   });
 }
 
+/**
+ * Categorias 'prepaid' (alojamento) ficam de fora do ritmo diario: sao pagas em
+ * blocos, muitas vezes antes da viagem comecar, e misturadas com o gasto do
+ * dia-a-dia distorcem a leitura de "quanto ja gastei vs quanto devia ter gasto".
+ */
 function buildSummary(expenses, today = todayISO(), overrides = []) {
   const day = tripDay(today);
+  const budgets = effectiveBudgets(overrides);
+  const groupOf = new Map(budgets.map((c) => [c.category, c.group]));
+
   const spentByCategory = new Map();
   for (const e of expenses) {
     spentByCategory.set(e.category, (spentByCategory.get(e.category) || 0) + Number(e.amount));
   }
 
-  const categories = effectiveBudgets(overrides).map((c) => {
+  const categories = budgets.map((c) => {
     const spent = round2(spentByCategory.get(c.category) || 0);
-    const expectedSoFar =
-      c.pacing === 'booked' ? round2(bookedSoFar(today)) : round2((c.planned / TOTAL_DAYS) * day);
+    if (c.group === 'prepaid') {
+      return {
+        category: c.category,
+        label: c.label,
+        group: c.group,
+        planned: c.planned,
+        pacingLabel: c.pacingLabel,
+        note: c.note,
+        spent,
+        remaining: round2(c.planned - spent),
+        expectedSoFar: null,
+        diffSoFar: null,
+      };
+    }
+    const expectedSoFar = round2((c.planned / TOTAL_DAYS) * day);
     return {
       category: c.category,
       label: c.label,
+      group: c.group,
       planned: c.planned,
-      pacing: c.pacing,
       pacingLabel: c.pacingLabel,
       note: c.note,
       spent,
@@ -74,18 +91,34 @@ function buildSummary(expenses, today = todayISO(), overrides = []) {
     };
   });
 
-  // Despesas em categorias desconhecidas nao devem desaparecer do total.
-  const known = new Set(CATEGORIES.map((c) => c.category));
+  // Despesas em categorias desconhecidas contam como gasto variavel, para nao
+  // desaparecerem dos totais.
+  const known = new Set(budgets.map((c) => c.category));
   const orphan = round2(
     [...spentByCategory].filter(([k]) => !known.has(k)).reduce((s, [, v]) => s + v, 0)
   );
 
-  const totals = {
-    planned: round2(categories.reduce((s, c) => s + c.planned, 0)),
-    spent: round2(categories.reduce((s, c) => s + c.spent, 0) + orphan),
-    expectedSoFar: round2(categories.reduce((s, c) => s + c.expectedSoFar, 0)),
+  const variableCats = categories.filter((c) => c.group !== 'prepaid');
+  const prepaidCats = categories.filter((c) => c.group === 'prepaid');
+
+  const variable = {
+    planned: round2(variableCats.reduce((s, c) => s + c.planned, 0)),
+    spent: round2(variableCats.reduce((s, c) => s + c.spent, 0) + orphan),
+    expectedSoFar: round2(variableCats.reduce((s, c) => s + c.expectedSoFar, 0)),
   };
-  totals.diffSoFar = round2(totals.spent - totals.expectedSoFar);
+  variable.diffSoFar = round2(variable.spent - variable.expectedSoFar);
+  variable.remaining = round2(variable.planned - variable.spent);
+
+  const prepaid = {
+    planned: round2(prepaidCats.reduce((s, c) => s + c.planned, 0)),
+    spent: round2(prepaidCats.reduce((s, c) => s + c.spent, 0)),
+  };
+  prepaid.remaining = round2(prepaid.planned - prepaid.spent);
+
+  const totals = {
+    planned: round2(variable.planned + prepaid.planned),
+    spent: round2(variable.spent + prepaid.spent),
+  };
   totals.remaining = round2(totals.planned - totals.spent);
 
   return {
@@ -94,15 +127,21 @@ function buildSummary(expenses, today = todayISO(), overrides = []) {
     today,
     tripDay: day,
     categories,
+    variable,
+    prepaid,
     totals,
-    cumulative: cumulativeSeries(expenses, today),
+    cumulative: cumulativeSeries(expenses, today, groupOf),
   };
 }
 
-/** Serie de gasto acumulado por dia da viagem (para o grafico de linha). */
-function cumulativeSeries(expenses, today = todayISO()) {
+/**
+ * Gasto variavel acumulado por dia da viagem. Exclui o pre-pago para a linha
+ * nao dar saltos verticais quando se paga uma reserva.
+ */
+function cumulativeSeries(expenses, today = todayISO(), groupOf = new Map()) {
   const byDay = new Array(TOTAL_DAYS + 1).fill(0);
   for (const e of expenses) {
+    if (groupOf.get(e.category) === 'prepaid') continue;
     const idx = Math.max(0, Math.min(TOTAL_DAYS, daysBetween(TRIP_START, e.expense_date) + 1));
     byDay[idx] += Number(e.amount);
   }
@@ -118,4 +157,4 @@ function cumulativeSeries(expenses, today = todayISO()) {
   return out;
 }
 
-module.exports = { buildSummary, effectiveBudgets, tripDay, bookedSoFar, todayISO, daysBetween };
+module.exports = { buildSummary, effectiveBudgets, tripDay, todayISO, daysBetween };
