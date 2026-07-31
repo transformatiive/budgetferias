@@ -236,6 +236,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.stat__value--sm {
+  font-size: 0.88rem;
+}
+
 .stat__value--over {
   color: #f0a488;
 }
@@ -249,14 +253,19 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 10px;
   color: var(--forest-mist);
   font-size: 0.62rem;
+}
+
+.header__prepaid span:first-child {
+  min-width: 0;
 }
 
 .header__prepaid span:last-child {
   color: var(--paper);
   white-space: nowrap;
+  flex: none;
 }
 
 /* ---------- layout ---------- */

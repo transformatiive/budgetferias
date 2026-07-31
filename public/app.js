@@ -63,29 +63,25 @@ function renderHeader() {
 
   document.getElementById('tripDay').textContent =
     tripDay === 0 ? 'antes da partida' : `dia ${tripDay}/${totalDays}`;
-  document.getElementById('totalSpent').textContent = euro(variable.spent);
-  document.getElementById('totalPlanned').textContent = `de ${euro0(variable.planned)} previstos`;
-  document.getElementById('totalExpected').textContent = euro(variable.expectedSoFar);
 
-  const pct = variable.planned > 0 ? Math.min(100, (variable.spent / variable.planned) * 100) : 0;
+  // O numero grande e o gasto real ate agora: tudo, incluindo o alojamento
+  // pre-pago. O ritmo diario fica como leitura secundaria, e so faz sentido
+  // sobre o gasto variavel.
+  document.getElementById('totalSpent').textContent = euro(totals.spent);
+  document.getElementById('totalPlanned').textContent = `de ${euro0(totals.planned)} previstos`;
+  document.getElementById('totalRemaining').textContent = euro(totals.remaining);
+
+  const pct = totals.planned > 0 ? Math.min(100, (totals.spent / totals.planned) * 100) : 0;
   document.getElementById('headerBar').style.width = pct + '%';
 
-  const tick = document.getElementById('headerTick');
-  if (variable.planned > 0 && variable.expectedSoFar > 0) {
-    tick.hidden = false;
-    tick.style.left = Math.min(100, (variable.expectedSoFar / variable.planned) * 100) + '%';
-  } else {
-    tick.hidden = true;
-  }
+  document.getElementById('prepaidLabel').textContent =
+    `variável ${euro0(variable.spent)} · alojamento ${euro0(prepaid.spent)}`;
+  document.getElementById('prepaidValue').textContent = `${Math.round(pct)}%`;
 
   const diff = document.getElementById('totalDiff');
   const over = variable.diffSoFar >= 0;
-  diff.textContent = signed(variable.diffSoFar);
-  diff.className = 'stat__value ' + (over ? 'stat__value--over' : 'stat__value--under');
-
-  document.getElementById('prepaidLabel').textContent =
-    `+ alojamento ${euro0(prepaid.spent)} de ${euro0(prepaid.planned)}`;
-  document.getElementById('prepaidValue').textContent = `viagem ${euro0(totals.spent)}`;
+  diff.textContent = `${signed(variable.diffSoFar)} ${over ? 'acima' : 'abaixo'}`;
+  diff.className = 'stat__value stat__value--sm ' + (over ? 'stat__value--over' : 'stat__value--under');
 }
 
 // ---------------------------------------------------------------- gráficos
