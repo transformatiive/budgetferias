@@ -85,52 +85,6 @@
       </section>
     </main>
 
-    <div class="fab-dock">
-      <button class="fab" id="openForm" type="button">
-        <span class="fab__plus" aria-hidden="true">+</span> Registar despesa
-      </button>
-    </div>
-
-    <div class="sheet" id="sheet" hidden>
-      <div class="sheet__backdrop" data-close></div>
-      <form class="sheet__panel" id="expenseForm" novalidate>
-        <div class="sheet__handle" aria-hidden="true"></div>
-        <div class="sheet__head">
-          <h2 class="sheet__title">Nova despesa</h2>
-          <button type="button" class="sheet__close" data-close aria-label="Fechar">&times;</button>
-        </div>
-        <label class="field">
-          <span class="field__label mono">Descrição</span>
-          <input name="description" type="text" required autocomplete="off" placeholder="Jantar em Zermatt" />
-        </label>
-        <label class="field">
-          <span class="field__label mono">Categoria</span>
-          <div class="select-wrap">
-            <select name="category" id="categorySelect" required></select>
-          </div>
-        </label>
-        <div class="field-row">
-          <label class="field">
-            <span class="field__label mono">Valor</span>
-            <div class="input-prefix">
-              <span aria-hidden="true">€</span>
-              <input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00" />
-            </div>
-          </label>
-          <label class="field">
-            <span class="field__label mono">Data</span>
-            <input name="expense_date" type="date" required />
-          </label>
-        </div>
-        <label class="field">
-          <span class="field__label mono">Nota <span class="field__hint">opcional</span></span>
-          <input name="note" type="text" autocomplete="off" placeholder="—" />
-        </label>
-        <p class="form-error" id="formError" hidden></p>
-        <button class="submit" type="submit">Guardar despesa</button>
-      </form>
-    </div>
-
     <script src="/app.js"></script>
   </body>
 </html>
