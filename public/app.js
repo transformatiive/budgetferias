@@ -51,7 +51,6 @@ async function load() {
   renderLineChart();
   renderCategoryCards();
   renderExpenses();
-  fillCategorySelect();
 }
 
 // ---------------------------------------------------------------- header
@@ -268,68 +267,6 @@ document.getElementById('expenseList').addEventListener('click', async (ev) => {
   } catch (err) {
     alert(err.message);
     btn.disabled = false;
-  }
-});
-
-// ---------------------------------------------------------------- formulário
-
-const sheet = document.getElementById('sheet');
-const form = document.getElementById('expenseForm');
-const formError = document.getElementById('formError');
-
-function fillCategorySelect() {
-  const select = document.getElementById('categorySelect');
-  if (select.options.length) return;
-  select.innerHTML = state.categories
-    .map((c) => `<option value="${esc(c.category)}">${esc(c.label)}</option>`)
-    .join('');
-}
-
-function openSheet() {
-  formError.hidden = true;
-  form.reset();
-  form.elements.expense_date.value = state.summary ? state.summary.today : new Date().toISOString().slice(0, 10);
-  sheet.hidden = false;
-  form.elements.description.focus();
-}
-
-function closeSheet() {
-  sheet.hidden = true;
-}
-
-document.getElementById('openForm').addEventListener('click', openSheet);
-sheet.addEventListener('click', (ev) => {
-  if (ev.target.hasAttribute('data-close')) closeSheet();
-});
-document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape' && !sheet.hidden) closeSheet();
-});
-
-form.addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const data = Object.fromEntries(new FormData(form).entries());
-  const submit = form.querySelector('.submit');
-  submit.disabled = true;
-  formError.hidden = true;
-  try {
-    await api('/api/expenses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        description: data.description,
-        category: data.category,
-        amount: Number(data.amount),
-        expense_date: data.expense_date,
-        note: data.note || undefined,
-      }),
-    });
-    closeSheet();
-    await load();
-  } catch (err) {
-    formError.textContent = err.message;
-    formError.hidden = false;
-  } finally {
-    submit.disabled = false;
   }
 });
 
