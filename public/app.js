@@ -70,14 +70,13 @@ async function load() {
 // ---------------------------------------------------------------- header
 
 function renderHeader() {
-  const { variable, prepaid, totals, tripDay, totalDays } = state.summary;
+  const { prepaid, totals, tripDay, totalDays } = state.summary;
 
   document.getElementById('tripDay').textContent =
     tripDay === 0 ? 'antes da partida' : `dia ${tripDay}/${totalDays}`;
 
   // O numero grande e o gasto real ate agora: tudo, incluindo o alojamento
-  // pre-pago. O ritmo diario fica como leitura secundaria, e so faz sentido
-  // sobre o gasto variavel.
+  // pre-pago.
   document.getElementById('totalSpent').textContent = euro(totals.spent);
   document.getElementById('totalPlanned').textContent = `de ${euro0(totals.planned)} previstos`;
   document.getElementById('totalRemaining').textContent = euro(totals.remaining);
@@ -85,20 +84,15 @@ function renderHeader() {
   const pct = totals.planned > 0 ? Math.min(100, (totals.spent / totals.planned) * 100) : 0;
   document.getElementById('headerBar').style.width = pct + '%';
 
-  document.getElementById('prepaidLabel').textContent =
-    `variável ${euro0(variable.spent)} · alojamento ${euro0(prepaid.spent)}`;
+  document.getElementById('prepaidLabel').textContent = `restam ${euro0(totals.remaining)}`;
   document.getElementById('prepaidValue').textContent = `${Math.round(pct)}%`;
-
-  const diff = document.getElementById('totalDiff');
-  const over = variable.diffSoFar >= 0;
-  diff.textContent = `${signed(variable.diffSoFar)} ${over ? 'acima' : 'abaixo'}`;
-  diff.className = 'stat__value stat__value--sm ' + (over ? 'stat__value--over' : 'stat__value--under');
+  document.getElementById('prepaidPaid').textContent = euro(prepaid.spent);
 }
 
 // ---------------------------------------------------------------- gráficos
 
 function renderLineChart() {
-  const { cumulativeTotal, cumulative, totalDays, tripStart, today } = state.summary;
+  const { cumulativeTotal, totals, totalDays, tripStart, today } = state.summary;
   const W = 340;
   const H = 178;
   const pad = { top: 14, right: 6, bottom: 26, left: 44 };
@@ -113,11 +107,12 @@ function renderLineChart() {
   }
 
   const last = cumulativeTotal[cumulativeTotal.length - 1];
-  const max = Math.max(1, ...cumulativeTotal.map((p) => p.total));
+  // escala ate ao orcamento total, para se ver quanto ainda sobra
+  const max = Math.max(1, totals.planned, ...cumulativeTotal.map((p) => p.total));
   const x = (d) => pad.left + (d / totalDays) * (W - pad.left - pad.right);
   const y = (v) => H - pad.bottom - (v / max) * (H - pad.top - pad.bottom);
 
-  meta.textContent = `${euro0(last.total)} até ${shortDate(today)}`;
+  meta.textContent = `${euro0(last.total)} de ${euro0(totals.planned)}`;
 
   const grad = el('linearGradient', { id: 'areaFill', x1: '0', y1: '0', x2: '0', y2: '1' });
   grad.appendChild(el('stop', { offset: '0%', 'stop-color': COLORS.spent, 'stop-opacity': '0.2' }));
@@ -134,17 +129,30 @@ function renderLineChart() {
     svg.appendChild(el('text', mono({ x: pad.left - 8, y: y(v) + 3, 'text-anchor': 'end' }), euro0(v)));
   }
 
-  // linha principal: gasto total, tudo o que ja saiu da conta
-  const ptsTotal = cumulativeTotal.map((p) => `${x(p.day)},${y(p.total)}`).join(' ');
+  // tecto do orcamento total
+  svg.appendChild(
+    el('line', {
+      x1: pad.left,
+      y1: y(totals.planned),
+      x2: W - pad.right,
+      y2: y(totals.planned),
+      stroke: COLORS.expected,
+      'stroke-width': 1.5,
+      'stroke-dasharray': '5 4',
+    })
+  );
+  // sem etiqueta: quando o orcamento e o topo da escala, o eixo ja o mostra
+
+  const pts = cumulativeTotal.map((p) => `${x(p.day)},${y(p.total)}`).join(' ');
   svg.appendChild(
     el('polygon', {
-      points: `${x(cumulativeTotal[0].day)},${y(0)} ${ptsTotal} ${x(last.day)},${y(0)}`,
+      points: `${x(cumulativeTotal[0].day)},${y(0)} ${pts} ${x(last.day)},${y(0)}`,
       fill: 'url(#areaFill)',
     })
   );
   svg.appendChild(
     el('polyline', {
-      points: ptsTotal,
+      points: pts,
       fill: 'none',
       stroke: COLORS.spent,
       'stroke-width': 2.5,
@@ -152,27 +160,10 @@ function renderLineChart() {
       'stroke-linecap': 'round',
     })
   );
-
-  // linha secundaria: so o gasto variavel, sem os degraus do alojamento
-  if (cumulative.length) {
-    svg.appendChild(
-      el('polyline', {
-        points: cumulative.map((p) => `${x(p.day)},${y(p.total)}`).join(' '),
-        fill: 'none',
-        stroke: COLORS.expected,
-        'stroke-width': 2,
-        'stroke-dasharray': '4 3',
-        'stroke-linejoin': 'round',
-        'stroke-linecap': 'round',
-      })
-    );
-  }
-
   svg.appendChild(
     el('circle', { cx: x(last.day), cy: y(last.total), r: 4, fill: COLORS.spent, stroke: '#fffdf7', 'stroke-width': 2 })
   );
 
-  // eixo x com datas, nao com numeros de dia
   for (let d = 1; d <= totalDays; d += 4) {
     svg.appendChild(
       el('text', mono({ x: x(d), y: H - 6, 'text-anchor': 'middle' }), shortDate(dayToDate(tripStart, d)))
