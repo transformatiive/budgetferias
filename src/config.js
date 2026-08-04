@@ -7,6 +7,10 @@
 const TRIP_START = '2026-07-27'; // dia 1
 const TOTAL_DAYS = 18;
 
+// pacing (so para categorias 'variable'):
+//   'daily'     -> (planned / TOTAL_DAYS) * dias decorridos
+//   'scheduled' -> soma das atividades da lista cuja data ja passou
+//
 // group:
 //   'variable' -> gasto do dia-a-dia; entra no ritmo (esperado ate hoje) e no
 //                 grafico de acumulado
@@ -37,7 +41,9 @@ const CATEGORIES = [
     label: 'Atividades / Teleféricos',
     planned: 1920,
     group: 'variable',
-    pacingLabel: 'média diária do orçamento',
+    pacing: 'scheduled',
+    schedule: 'activities', // ver PLANNED_ACTIVITIES
+    pacingLabel: 'atividades com data já passada',
   },
   {
     category: 'transporte',
@@ -54,6 +60,22 @@ const CATEGORIES = [
     pacingLabel: 'sem orçamento previsto',
   },
 ];
+
+// Atividades previstas, com a data em que acontecem. Servem para calcular o
+// "previsto ate hoje" da categoria atividades: em vez de uma media diaria,
+// conta-se o que ja estava marcado ate a data de hoje.
+// (Gandria e Bellinzona sairam do plano.)
+const PLANNED_ACTIVITIES = [
+  { name: 'Monte Generoso', date: '2026-08-03', amount: 109 },
+  { name: 'Monte San Salvatore + Morcote', date: '2026-08-04', amount: 109 },
+  { name: 'Täsch — parque 4 dias', date: '2026-08-08', amount: 88 },
+  { name: 'Zermatt — Schwarzsee', date: '2026-08-09', amount: 109 },
+  { name: 'Zermatt — 5 Lakes / Sunnegga', date: '2026-08-09', amount: 55 },
+  { name: 'Zermatt — Gornergrat', date: '2026-08-10', amount: 235 },
+  { name: 'Bernina Express', date: '2026-08-12', amount: 269 },
+];
+
+const SCHEDULES = { activities: PLANNED_ACTIVITIES };
 
 // Reservas de alojamento confirmadas, como referencia do que compoe o
 // orcamento de alojamento. Adicionar aqui as que faltam (Zaragoza, Chamonix)
@@ -82,4 +104,13 @@ const SEED_EXPENSES = [
 
 const CATEGORY_KEYS = CATEGORIES.map((c) => c.category);
 
-module.exports = { TRIP_START, TOTAL_DAYS, CATEGORIES, CATEGORY_KEYS, BOOKINGS, SEED_EXPENSES };
+module.exports = {
+  TRIP_START,
+  TOTAL_DAYS,
+  CATEGORIES,
+  CATEGORY_KEYS,
+  BOOKINGS,
+  PLANNED_ACTIVITIES,
+  SCHEDULES,
+  SEED_EXPENSES,
+};

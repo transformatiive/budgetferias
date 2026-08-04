@@ -3,7 +3,7 @@
 const path = require('path');
 const express = require('express');
 const db = require('./src/db');
-const { CATEGORY_KEYS, BOOKINGS, TRIP_START, TOTAL_DAYS } = require('./src/config');
+const { CATEGORY_KEYS, BOOKINGS, PLANNED_ACTIVITIES, TRIP_START, TOTAL_DAYS } = require('./src/config');
 const { buildSummary, effectiveBudgets, todayISO } = require('./src/summary');
 
 const app = express();
@@ -48,6 +48,7 @@ app.get('/api/config', async (_req, res, next) => {
       totalDays: TOTAL_DAYS,
       categories: effectiveBudgets(await db.budgetOverrides()),
       bookings: BOOKINGS,
+      plannedActivities: PLANNED_ACTIVITIES,
     });
   } catch (err) {
     next(err);

@@ -182,8 +182,8 @@ function renderCategoryCards() {
   document.getElementById('variablePeriod').textContent =
     tripDay === 0
       ? `A viagem começa a ${shortDate(tripStart)}.`
-      : `Previsto = parte do orçamento de ${shortDate(tripStart)} a ${shortDate(today)} ` +
-        `(${tripDay} de ${totalDays} dias).`;
+      : `Previsto = o que já devia ter sido gasto até ${shortDate(today)} ` +
+        `(dia ${tripDay} de ${totalDays}).`;
 
   const wrap = document.getElementById('categoryCards');
   wrap.innerHTML = state.variableCats
@@ -209,10 +209,21 @@ function renderCategoryCards() {
           <span>previsto <strong>${euro0(c.expectedSoFar)}</strong></span>
           <span>total <strong>${euro0(c.planned)}</strong></span>
         </div>
+        ${scheduleNote(c)}
         ${c.note ? `<p class="cat__note">${esc(c.note)}</p>` : ''}
       </article>`;
     })
     .join('');
+}
+
+/** Detalhe das categorias com agenda: quantas ja passaram e qual e a proxima. */
+function scheduleNote(c) {
+  if (!c.schedule) return '';
+  const { doneCount, totalCount, total, next } = c.schedule;
+  const parts = [`${doneCount} de ${totalCount} atividades até ${shortDate(state.summary.today)}`];
+  if (next) parts.push(`próxima: ${next.name}, ${shortDate(next.date)} (${euro0(next.amount)})`);
+  parts.push(`plano ${euro0(total)}`);
+  return `<p class="cat__note">${esc(parts.join(' · '))}</p>`;
 }
 
 function renderPrepaidCards() {
