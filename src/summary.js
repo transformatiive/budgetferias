@@ -1,6 +1,6 @@
 'use strict';
 
-const { TRIP_START, TOTAL_DAYS, CATEGORIES } = require('./config');
+const { TRIP_START, TOTAL_DAYS, CATEGORIES, SCHEDULES } = require('./config');
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -22,6 +22,11 @@ function tripDay(today = todayISO()) {
   return Math.max(0, Math.min(TOTAL_DAYS, day));
 }
 
+/** Soma dos itens agendados cuja data ja passou. */
+function scheduledSoFar(schedule, today) {
+  return round2(schedule.filter((i) => i.date <= today).reduce((s, i) => s + i.amount, 0));
+}
+
 /**
  * Junta as categorias do config com os valores guardados via PUT /api/budget/:category.
  * O que esta na base de dados prevalece; o config e apenas o valor por omissao.
@@ -36,6 +41,8 @@ function effectiveBudgets(overrides = []) {
       category: c.category,
       label: c.label,
       group: c.group,
+      pacing: c.pacing ?? 'daily',
+      schedule: c.schedule ?? null,
       pacingLabel: c.pacingLabel,
       planned: plannedOverridden ? Number(o.planned) : c.planned,
       note: noteOverridden ? o.note : c.note ?? null,
@@ -77,11 +84,19 @@ function buildSummary(expenses, today = todayISO(), overrides = []) {
         diffSoFar: null,
       };
     }
-    const expectedSoFar = round2((c.planned / TOTAL_DAYS) * day);
-    return {
+    // Categorias com agenda (atividades) comparam-se com o que ja estava
+    // marcado ate hoje, nao com uma media diaria: as atividades acontecem em
+    // dias concretos, nao a um ritmo constante.
+    const items = c.pacing === 'scheduled' ? SCHEDULES[c.schedule] || [] : null;
+    const expectedSoFar = items
+      ? scheduledSoFar(items, today)
+      : round2((c.planned / TOTAL_DAYS) * day);
+
+    const base = {
       category: c.category,
       label: c.label,
       group: c.group,
+      pacing: c.pacing,
       planned: c.planned,
       pacingLabel: c.pacingLabel,
       note: c.note,
@@ -89,6 +104,20 @@ function buildSummary(expenses, today = todayISO(), overrides = []) {
       expectedSoFar,
       diffSoFar: round2(spent - expectedSoFar),
     };
+
+    if (items) {
+      const done = items.filter((i) => i.date <= today);
+      const upcoming = items.filter((i) => i.date > today).sort((a, b) => a.date.localeCompare(b.date));
+      base.schedule = {
+        items,
+        total: round2(items.reduce((s, i) => s + i.amount, 0)),
+        doneCount: done.length,
+        totalCount: items.length,
+        next: upcoming[0] || null,
+      };
+    }
+
+    return base;
   });
 
   // Despesas em categorias desconhecidas contam como gasto variavel, para nao
